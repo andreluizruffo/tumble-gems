@@ -1,7 +1,7 @@
 // Rendering with PixiJS: draws the board and animates the symbols.
 // It knows nothing about money or rules; it only shows what the logic decided.
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import { BOARD_PADDING, CELL, COLS, ROWS, SYMBOLS } from './config';
+import { BOARD_PADDING, CELL, COLS, ORB, ROWS, SCATTER, SYMBOLS } from './config';
 import type { Cell, Grid } from './logic';
 import { easeInCubic, easeOutBack, easeOutBounce, easeOutCubic, tween, wait } from './tween';
 
@@ -14,6 +14,7 @@ export class SlotView {
   private board = new Container();
   private sprites = new Map<number, Container>();
   private banner = new Container();
+  private frame = new Graphics();
 
   private constructor(app: Application) {
     this.app = app;
@@ -40,11 +41,11 @@ export class SlotView {
   }
 
   private setup() {
-    const frame = new Graphics()
+    this.frame
       .roundRect(0, 0, BOARD_W + BOARD_PADDING * 2, BOARD_H + BOARD_PADDING * 2, 20)
       .fill({ color: 0x1e1b4b })
       .stroke({ width: 3, color: 0xfacc15, alpha: 0.6 });
-    this.app.stage.addChild(frame);
+    this.app.stage.addChild(this.frame);
 
     const cells = new Graphics();
     for (let col = 0; col < COLS; col++) {
@@ -79,7 +80,23 @@ export class SlotView {
     const g = new Graphics();
     const r = SYMBOL_RADIUS;
 
-    if (cell.symbol === -1) {
+    if (cell.symbol === SCATTER) {
+      // Scatter: a magenta sun with a white burst, labelled BONUS
+      g.star(0, 0, 12, r * 1.08, r * 0.8).fill(0xfbbf24);
+      g.circle(0, 0, r * 0.78).fill(0xc026d3).stroke({ width: 3, color: 0xfde68a });
+      g.star(0, -4, 4, r * 0.5, r * 0.16).fill(0xffffff);
+      sprite.addChild(g);
+      const label = new Text({
+        text: 'BONUS',
+        style: { fill: 0xffffff, fontSize: 15, fontWeight: '900', fontFamily: 'Arial', stroke: { color: 0x701a75, width: 4 } },
+      });
+      label.anchor.set(0.5);
+      label.y = r * 0.48;
+      sprite.addChild(label);
+      return sprite;
+    }
+
+    if (cell.symbol === ORB) {
       // Multiplier orb
       g.circle(0, 0, r).fill(0xb45309).circle(0, 0, r * 0.82).fill(0xfbbf24);
       g.circle(-r * 0.3, -r * 0.3, r * 0.22).fill({ color: 0xffffff, alpha: 0.5 });
@@ -115,6 +132,9 @@ export class SlotView {
         break;
       case 'octagon':
         g.regularPoly(0, 0, r, 8, Math.PI / 8);
+        break;
+      case 'pentagon':
+        g.regularPoly(0, 0, r, 5);
         break;
       case 'star':
         g.star(0, 0, 5, r, r * 0.45);
@@ -211,12 +231,45 @@ export class SlotView {
     await Promise.all(orbs.map((s) => tween(this.ticker, s.scale, { x: 1, y: 1 }, 200, easeOutCubic)));
   }
 
-  async showBanner(text: string, color = 0xffffff) {
+  /** Scatters grow, spin and glow before free spins start. */
+  async celebrateScatters(ids: number[]) {
+    const scatters = ids.map((id) => this.sprites.get(id)).filter((s): s is Container => !!s);
+    const glows = scatters.map((s) => {
+      const glow = new Graphics().circle(0, 0, SYMBOL_RADIUS * 1.25).fill({ color: 0xf0abfc, alpha: 0.5 });
+      glow.alpha = 0;
+      s.addChildAt(glow, 0);
+      return glow;
+    });
+
+    // bring the scatters to the front so the animation is not hidden by neighbours
+    for (const s of scatters) this.board.setChildIndex(s, this.board.children.length - 1);
+
+    await Promise.all([
+      ...scatters.map((s) => tween(this.ticker, s.scale, { x: 1.4, y: 1.4 }, 350, easeOutBack)),
+      ...glows.map((g) => tween(this.ticker, g, { alpha: 1 }, 350, easeOutCubic)),
+    ]);
+    for (let i = 0; i < 2; i++) {
+      await Promise.all(scatters.map((s) => tween(this.ticker, s, { rotation: s.rotation + Math.PI * 2 }, 600, easeOutCubic)));
+    }
+    await Promise.all([
+      ...scatters.map((s) => tween(this.ticker, s.scale, { x: 1, y: 1 }, 250, easeOutCubic)),
+      ...glows.map((g) => tween(this.ticker, g, { alpha: 0 }, 250, easeOutCubic)),
+    ]);
+    glows.forEach((g) => g.destroy());
+  }
+
+  /** Visual mode for free spins: the board frame turns magenta. */
+  setFreeSpinsMode(on: boolean) {
+    this.frame.tint = on ? 0xf0abfc : 0xffffff;
+  }
+
+  async showBanner(text: string, color = 0xffffff, fontSize = 72) {
     const label = new Text({
       text,
       style: {
         fill: color,
-        fontSize: 72,
+        fontSize,
+        align: 'center',
         fontWeight: '900',
         fontFamily: 'Arial',
         stroke: { color: 0x1e1b4b, width: 10 },

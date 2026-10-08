@@ -70,25 +70,105 @@
   color: #facc15;
 }
 
-.bet-options {
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.stepper strong {
+  font-size: 22px;
+}
+
+.stepper button,
+.auto-options button {
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid #4338ca;
+  background: transparent;
+  color: #e0e7ff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auto {
+  background: #1e1b4b;
+  border: 1px solid #312e81;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.auto span {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #a5b4fc;
+}
+
+.auto-options {
   display: flex;
   gap: 6px;
   margin-top: 4px;
 }
 
-.bet-options button {
+.auto-options button {
   flex: 1;
+  font-size: 15px;
   padding: 8px 0;
-  border-radius: 10px;
-  border: 1px solid #4338ca;
-  background: transparent;
-  color: #e0e7ff;
-  font-weight: 700;
-  cursor: pointer;
 }
 
-.bet-options button.active {
-  background: #4338ca;
+.spin.stop {
+  background: linear-gradient(180deg, #fca5a5, #ef4444);
+  color: #450a0a;
+  box-shadow: 0 6px 0 #991b1b;
+}
+
+.buy {
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #fff;
+  background: linear-gradient(180deg, #e879f9, #a21caf);
+  cursor: pointer;
+  box-shadow: 0 6px 0 #701a75;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.buy small {
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.free-spins {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: linear-gradient(90deg, #701a75, #a21caf);
+  border-radius: 14px;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.free-spins span {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #fbcfe8;
+}
+
+.free-spins strong {
+  font-size: 22px;
 }
 
 .spin {
@@ -110,7 +190,9 @@
 }
 
 .spin:disabled,
-.bet-options button:disabled {
+.buy:disabled,
+.stepper button:disabled,
+.auto-options button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

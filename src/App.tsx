@@ -1,30 +1,53 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BET_OPTIONS, MIN_MATCH, START_BALANCE, SYMBOLS } from './game/config';
+import {
+  AUTO_OPTIONS,
+  BET_OPTIONS,
+  BONUS_BUY_PRICE,
+  FREE_SPINS_AWARD,
+  FREE_SPINS_TRIGGER,
+  MIN_MATCH,
+  RETRIGGER_AWARD,
+  RETRIGGER_SCATTERS,
+  START_BALANCE,
+  SYMBOLS,
+} from './game/config';
 import { Game, type GameState } from './game/Game';
 import { SlotView } from './game/SlotView';
 import './App.css';
 
 const STATUS: Record<GameState['phase'], string> = {
-  idle: 'Pronto para girar',
+  idle: 'Pronto',
   spinning: 'Girando...',
   tumbling: 'Cascata!',
   paying: 'Multiplicador!',
+  bonus: 'Rodadas grátis',
 };
 
 const money = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const INITIAL_STATE: GameState = {
+  balance: START_BALANCE,
+  phase: 'idle',
+  spinWin: 0,
+  tumbles: 0,
+  multiplier: 0,
+  freeSpinsLeft: 0,
+  freeSpinsTotal: 0,
+  freeSpinsWin: 0,
+  freeSpinsMultiplier: 0,
+  lastRoundWin: 0,
+};
+
 export default function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const [state, setState] = useState<GameState>({
-    balance: START_BALANCE,
-    phase: 'idle',
-    spinWin: 0,
-    tumbles: 0,
-    multiplier: 0,
-  });
-  const [bet, setBet] = useState(BET_OPTIONS[0]);
+  const [state, setState] = useState<GameState>(INITIAL_STATE);
+  const [betIndex, setBetIndex] = useState(2);
+  const [autoLeft, setAutoLeft] = useState(0);
   const [ready, setReady] = useState(false);
+
+  const bet = BET_OPTIONS[betIndex];
+  const bonusPrice = bet * BONUS_BUY_PRICE;
 
   // Create the Pixi view once; destroy it when the component unmounts.
   useEffect(() => {
@@ -53,29 +76,73 @@ export default function App() {
 
   const busy = !ready || state.phase !== 'idle';
   const canSpin = !busy && state.balance >= bet;
+  const autoRunning = autoLeft > 0;
 
   const spin = useCallback(() => {
     if (canSpin) gameRef.current?.spin(bet);
   }, [canSpin, bet]);
 
-  // Space bar spins too.
+  // Autoplay: whenever the game is idle and spins are left, start the next one.
+  useEffect(() => {
+    if (!ready || autoLeft <= 0 || state.phase !== 'idle') return;
+    if (state.balance < bet) {
+      setAutoLeft(0);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setAutoLeft((n) => n - 1);
+      gameRef.current?.spin(bet);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [ready, autoLeft, state.phase, state.balance, bet]);
+
+  const buyBonus = () => {
+    if (busy || state.balance < bonusPrice) return;
+    if (window.confirm(`Comprar ${FREE_SPINS_AWARD} rodadas grátis por ${money(bonusPrice)}?`)) {
+      gameRef.current?.buyBonus(bet);
+    }
+  };
+
+  // Space bar spins (or stops autoplay).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        spin();
-      }
+      if (e.code !== 'Space') return;
+      e.preventDefault();
+      if (autoRunning) setAutoLeft(0);
+      else spin();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [spin]);
+  }, [spin, autoRunning]);
+
+  const inFreeSpins = state.freeSpinsTotal > 0;
+  const shownWin = state.phase === 'idle' && state.lastRoundWin > 0 ? state.lastRoundWin : state.spinWin;
 
   return (
     <main className="app">
       <header className="title">
         <h1>Tumble Gems</h1>
-        <p>Demo de caça-níquel com cascata · créditos fictícios</p>
+        <p>Demo de caça-níquel com cascata · créditos fictícios · RTP simulado 97%</p>
       </header>
+
+      {inFreeSpins && (
+        <section className="free-spins">
+          <div>
+            <span>Rodadas grátis</span>
+            <strong>
+              {state.freeSpinsTotal - state.freeSpinsLeft}/{state.freeSpinsTotal}
+            </strong>
+          </div>
+          <div>
+            <span>Multiplicador</span>
+            <strong>x{state.freeSpinsMultiplier || 1}</strong>
+          </div>
+          <div>
+            <span>Ganho no bônus</span>
+            <strong>{money(state.freeSpinsWin)}</strong>
+          </div>
+        </section>
+      )}
 
       <div className="board" ref={canvasRef} />
 
@@ -87,7 +154,7 @@ export default function App() {
 
         <div className="stat win">
           <span>Ganho</span>
-          <strong>{money(state.spinWin)}</strong>
+          <strong>{money(shownWin)}</strong>
           {state.tumbles > 0 && (
             <small>
               {state.tumbles} cascata{state.tumbles > 1 ? 's' : ''}
@@ -98,26 +165,50 @@ export default function App() {
 
         <div className="bet">
           <span>Aposta</span>
-          <div className="bet-options">
-            {BET_OPTIONS.map((value) => (
-              <button
-                key={value}
-                className={value === bet ? 'active' : ''}
-                disabled={busy}
-                onClick={() => setBet(value)}
-              >
-                {value}
+          <div className="stepper">
+            <button disabled={busy || autoRunning || betIndex === 0} onClick={() => setBetIndex((i) => i - 1)}>
+              −
+            </button>
+            <strong>{money(bet)}</strong>
+            <button
+              disabled={busy || autoRunning || betIndex === BET_OPTIONS.length - 1}
+              onClick={() => setBetIndex((i) => i + 1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {autoRunning ? (
+          <button className="spin stop" onClick={() => setAutoLeft(0)}>
+            PARAR ({autoLeft})
+          </button>
+        ) : (
+          <button className="spin" onClick={spin} disabled={!canSpin}>
+            {!ready ? 'Carregando...' : busy ? STATUS[state.phase] : 'GIRAR'}
+          </button>
+        )}
+
+        <div className="auto">
+          <span>Giro automático</span>
+          <div className="auto-options">
+            {AUTO_OPTIONS.map((n) => (
+              <button key={n} disabled={!canSpin || autoRunning} onClick={() => setAutoLeft(n)}>
+                {n}
               </button>
             ))}
           </div>
         </div>
 
-        <button className="spin" onClick={spin} disabled={!canSpin}>
-          {!ready ? 'Carregando...' : busy ? STATUS[state.phase] : 'GIRAR'}
+        <button className="buy" onClick={buyBonus} disabled={busy || autoRunning || state.balance < bonusPrice}>
+          COMPRAR BÔNUS
+          <small>{money(bonusPrice)}</small>
         </button>
       </section>
 
-      {state.balance < bet && state.phase === 'idle' && <p className="broke">Saldo insuficiente. Recarregue a página.</p>}
+      {state.balance < bet && state.phase === 'idle' && (
+        <p className="broke">Saldo insuficiente. Recarregue a página para recomeçar.</p>
+      )}
 
       <details className="rules">
         <summary>Como funciona</summary>
@@ -130,7 +221,15 @@ export default function App() {
             ganho.
           </li>
           <li>
-            <b>Multiplicadores:</b> as esferas douradas somam e multiplicam o ganho total do giro.
+            <b>Multiplicadores:</b> as esferas douradas multiplicam o ganho do giro. Nas rodadas grátis, elas se
+            acumulam.
+          </li>
+          <li>
+            <b>Bônus:</b> {FREE_SPINS_TRIGGER}+ símbolos BONUS dão {FREE_SPINS_AWARD} rodadas grátis.{' '}
+            {RETRIGGER_SCATTERS}+ durante o bônus dão mais {RETRIGGER_AWARD}.
+          </li>
+          <li>
+            <b>Compra de bônus:</b> {BONUS_BUY_PRICE}x a aposta para ir direto às rodadas grátis.
           </li>
         </ul>
         <table>
