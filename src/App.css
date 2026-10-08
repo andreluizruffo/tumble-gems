@@ -1,0 +1,171 @@
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  text-align: center;
+}
+
+.title h1 {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 44px);
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #facc15, #f97316);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.title p {
+  margin: 4px 0 0;
+  color: #a5b4fc;
+  font-size: 14px;
+}
+
+.board canvas {
+  display: block;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.stat,
+.bet {
+  background: #1e1b4b;
+  border: 1px solid #312e81;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat span,
+.bet span {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #a5b4fc;
+}
+
+.stat strong {
+  font-size: 24px;
+}
+
+.stat.win strong {
+  color: #4ade80;
+}
+
+.stat small {
+  color: #facc15;
+}
+
+.bet-options {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.bet-options button {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 1px solid #4338ca;
+  background: transparent;
+  color: #e0e7ff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bet-options button.active {
+  background: #4338ca;
+}
+
+.spin {
+  border: none;
+  border-radius: 14px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #451a03;
+  background: linear-gradient(180deg, #fde047, #f59e0b);
+  cursor: pointer;
+  box-shadow: 0 6px 0 #b45309;
+  transition: transform 0.08s;
+}
+
+.spin:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #b45309;
+}
+
+.spin:disabled,
+.bet-options button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.broke {
+  text-align: center;
+  color: #fca5a5;
+  margin: 0;
+}
+
+.rules {
+  background: #1e1b4b;
+  border: 1px solid #312e81;
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.rules summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.rules ul {
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+.rules table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.rules th,
+.rules td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #312e81;
+}
+
+.rules td i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@media (max-width: 520px) {
+  .hud {
+    grid-template-columns: 1fr;
+  }
+
+  .spin {
+    padding: 14px 0;
+  }
+}
