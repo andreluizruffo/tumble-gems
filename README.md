@@ -59,6 +59,11 @@ npm test         # logic + RTP tests
 npm run build
 ```
 
+## Docs (in Portuguese)
+
+- [Technical decisions](docs/decisoes.md): stack, architecture and math, with the reasons and the discarded alternatives
+- [Design brief](docs/design.md): audience, full game flow, palette, symbols, animation timing and open issues
+
 ---
 
 ## 🇧🇷 Português
@@ -70,3 +75,4 @@ Caça-níquel de cascata ("paga em qualquer lugar") feito com **PixiJS 8, React 
 - **Rodadas grátis:** 4+ símbolos BONUS dão 15 rodadas, e 3+ durante o bônus dão mais 5. Também tem **compra de bônus** (52x), **giro automático** e apostas de 0,20 a 100.
 - **Matemática:** calibrada com simulação de 1 milhão de giros. O RTP é de 97% e 26% dos giros ganham. Um teste automático protege esse equilíbrio.
 - **Arquitetura:** a lógica decide o giro inteiro antes e a tela só anima, como num cassino online, onde o servidor decide e o navegador mostra.
+- **Documentação:** [decisões técnicas](docs/decisoes.md) e [brief de design](docs/design.md).
