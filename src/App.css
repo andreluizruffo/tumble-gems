@@ -1,10 +1,20 @@
 .app {
+  /* Height of everything that must fit on screen besides the board: padding, title and the HUD row with GIRAR.
+     The board shrinks on short screens so GIRAR never needs scrolling (see .board). */
+  --reserve: 224px;
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 16px 48px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Slot shared by the title and the free spins bar (same height, so nothing jumps when the bonus starts) */
+.top {
+  min-height: 78px;
+  display: grid;
+  align-content: center;
 }
 
 .title {
@@ -14,6 +24,7 @@
 .title h1 {
   margin: 0;
   font-size: clamp(28px, 6vw, 44px);
+  line-height: 1.2;
   letter-spacing: 1px;
   background: linear-gradient(90deg, #facc15, #f97316);
   -webkit-background-clip: text;
@@ -27,21 +38,61 @@
   font-size: 14px;
 }
 
+.board {
+  /* Width / height of the canvas. SlotView overwrites it with the value computed from config.ts. */
+  --board-ratio: 1.1875;
+  /* Full column width, unless the screen is too short: then the width follows the free height.
+     max(260px) keeps it playable on a phone lying down (there the page scrolls). */
+  width: min(100%, max(260px, calc((100vh - var(--reserve)) * var(--board-ratio))));
+  width: min(100%, max(260px, calc((100dvh - var(--reserve)) * var(--board-ratio))));
+  aspect-ratio: var(--board-ratio); /* holds the space while the board loads */
+  margin-inline: auto;
+}
+
 .board canvas {
   display: block;
   border-radius: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
+/* HUD: numbers and GIRAR in the first row (always on screen), settings in the second. */
 .hud {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    'balance win spin'
+    'bet autoplay buy';
   gap: 12px;
   align-items: stretch;
 }
 
-.stat,
+.balance {
+  grid-area: balance;
+}
+
+.win {
+  grid-area: win;
+}
+
+.spin {
+  grid-area: spin;
+}
+
 .bet {
+  grid-area: bet;
+}
+
+.auto {
+  grid-area: autoplay; /* not "auto": that word is reserved in CSS */
+}
+
+.buy {
+  grid-area: buy;
+}
+
+.stat,
+.bet,
+.auto {
   background: #1e1b4b;
   border: 1px solid #312e81;
   border-radius: 14px;
@@ -49,13 +100,23 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .stat span,
-.bet span {
+.bet span,
+.auto span {
   font-size: 12px;
   text-transform: uppercase;
   color: #a5b4fc;
+}
+
+/* Label and cascade count share one line, so the box does not grow during a spin */
+.stat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .stat strong {
@@ -68,6 +129,8 @@
 
 .stat small {
   color: #facc15;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .stepper {
@@ -84,7 +147,9 @@
 
 .stepper button,
 .auto-options button {
-  padding: 6px 14px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 6px 12px;
   border-radius: 10px;
   border: 1px solid #4338ca;
   background: transparent;
@@ -92,22 +157,6 @@
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
-}
-
-.auto {
-  background: #1e1b4b;
-  border: 1px solid #312e81;
-  border-radius: 14px;
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.auto span {
-  font-size: 12px;
-  text-transform: uppercase;
-  color: #a5b4fc;
 }
 
 .auto-options {
@@ -118,8 +167,33 @@
 
 .auto-options button {
   flex: 1;
+  min-width: 0;
   font-size: 15px;
   padding: 8px 0;
+}
+
+.spin {
+  border: none;
+  border-radius: 14px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #451a03;
+  background: linear-gradient(180deg, #fde047, #f59e0b);
+  cursor: pointer;
+  box-shadow: 0 6px 0 #b45309;
+  transition: transform 0.08s;
+}
+
+/* While disabled the button shows the phase ("Multiplicador!", "Rodadas grátis"): longer words, smaller type */
+.spin:disabled {
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.spin:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #b45309;
 }
 
 .spin.stop {
@@ -135,6 +209,8 @@
   font-weight: 900;
   letter-spacing: 1px;
   color: #fff;
+  /* white on the light top of the gradient needs a shadow to stay readable */
+  text-shadow: 0 1px 2px rgba(74, 4, 78, 0.6);
   background: linear-gradient(180deg, #e879f9, #a21caf);
   cursor: pointer;
   box-shadow: 0 6px 0 #701a75;
@@ -143,11 +219,27 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
+  min-height: 56px;
 }
 
 .buy small {
   font-weight: 700;
   opacity: 0.9;
+}
+
+.spin:disabled,
+.buy:disabled,
+.stepper button:disabled,
+.auto-options button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Keyboard focus: a light ring that shows on the dark background */
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #e0e7ff;
+  outline-offset: 2px;
 }
 
 .free-spins {
@@ -171,36 +263,21 @@
   font-size: 22px;
 }
 
-.spin {
-  border: none;
-  border-radius: 14px;
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: #451a03;
-  background: linear-gradient(180deg, #fde047, #f59e0b);
-  cursor: pointer;
-  box-shadow: 0 6px 0 #b45309;
-  transition: transform 0.08s;
-}
-
-.spin:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow: 0 3px 0 #b45309;
-}
-
-.spin:disabled,
-.buy:disabled,
-.stepper button:disabled,
-.auto-options button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .broke {
   text-align: center;
   color: #fca5a5;
   margin: 0;
+}
+
+.broke button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .rules {
@@ -226,6 +303,13 @@
   font-size: 14px;
 }
 
+.rules caption {
+  text-align: left;
+  color: #a5b4fc;
+  font-size: 13px;
+  padding-bottom: 6px;
+}
+
 .rules th,
 .rules td {
   text-align: left;
@@ -242,12 +326,126 @@
   vertical-align: middle;
 }
 
-@media (max-width: 520px) {
+/* Bonus buy confirmation (BonusDialog.tsx) */
+.dialog {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #e0e7ff;
+  width: min(400px, calc(100vw - 32px));
+}
+
+.dialog::backdrop {
+  background: rgba(15, 10, 46, 0.75);
+}
+
+.dialog-box {
+  background: #1e1b4b;
+  border: 2px solid #a21caf;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.dialog h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: #f0abfc;
+}
+
+.dialog p {
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.dialog-actions button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dialog-actions .cancel {
+  border: 1px solid #4338ca;
+  background: transparent;
+  color: #e0e7ff;
+}
+
+.dialog-actions .confirm {
+  border: none;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(74, 4, 78, 0.6);
+  background: linear-gradient(180deg, #e879f9, #a21caf);
+  box-shadow: 0 4px 0 #701a75;
+}
+
+/* Text only for screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Phones and narrow windows: 2 columns, GIRAR full width right below the numbers */
+@media (max-width: 640px) {
+  .app {
+    --reserve: 252px;
+    padding: 12px 16px 32px;
+    gap: 12px;
+  }
+
+  .top {
+    min-height: 72px;
+  }
+
+  .title p {
+    font-size: 13px;
+  }
+
   .hud {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'balance win'
+      'spin spin'
+      'bet bet'
+      'autoplay autoplay'
+      'buy buy';
+  }
+
+  .stat {
+    padding: 8px 12px;
+  }
+
+  .stat strong {
+    font-size: 22px;
   }
 
   .spin {
-    padding: 14px 0;
+    min-height: 56px;
+  }
+
+  .free-spins {
+    padding: 8px 10px;
+  }
+
+  .free-spins strong {
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    transition: none;
   }
 }

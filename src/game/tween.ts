@@ -22,6 +22,15 @@ export const easeOutBounce: Easing = (t) => {
   return n1 * (t -= 2.625 / d1) * t + 0.984375;
 };
 
+// Accessibility: when the system asks for less motion (prefers-reduced-motion),
+// animations run faster and without bounce/overshoot. Pauses made with wait() keep their length,
+// so banners stay on screen long enough to be read.
+const REDUCED_SPEED = 0.5; // 0.5 = half the duration
+
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function tween(
   ticker: Ticker,
   target: object,
@@ -29,6 +38,26 @@ export function tween(
   duration: number,
   ease: Easing = easeOutCubic,
   delay = 0,
+): Promise<void> {
+  if (prefersReducedMotion()) {
+    duration *= REDUCED_SPEED;
+    delay *= REDUCED_SPEED;
+    if (ease === easeOutBounce || ease === easeOutBack) ease = easeOutCubic;
+  }
+  return run(ticker, target, to, duration, ease, delay);
+}
+
+export function wait(ticker: Ticker, ms: number): Promise<void> {
+  return run(ticker, {}, {}, ms, linear, 0);
+}
+
+function run(
+  ticker: Ticker,
+  target: object,
+  to: Record<string, number>,
+  duration: number,
+  ease: Easing,
+  delay: number,
 ): Promise<void> {
   const obj = target as Record<string, number>;
   return new Promise((resolve) => {
@@ -59,8 +88,4 @@ export function tween(
 
     ticker.add(update);
   });
-}
-
-export function wait(ticker: Ticker, ms: number): Promise<void> {
-  return tween(ticker, {}, {}, ms, linear);
 }

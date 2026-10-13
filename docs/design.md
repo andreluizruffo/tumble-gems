@@ -22,16 +22,22 @@ GIRAR (ou barra de espaço)
   → ganho de 10x a aposta ou mais: banner "BIG WIN!"
   → volta para GIRAR
 
-COMPRAR BÔNUS → confirmação → rodadas grátis direto
-  → barra roxa no topo: rodada atual/total, multiplicador acumulado, ganho no bônus
+COMPRAR BÔNUS → diálogo "Comprar bônus?" (preço e saldo que sobra; Cancelar / Comprar) → rodadas grátis direto
+  → a tela volta para o tabuleiro (no celular o botão fica abaixo dele)
+  → barra roxa no lugar do título: rodada atual/total, multiplicador acumulado, ganho no bônus
   → 3+ BONUS durante o bônus: "+5 RODADAS"
   → fim: banner "TOTAL" com o ganho → volta para GIRAR
 
-GIRO AUTOMÁTICO (10/25/50/100) → GIRAR vira PARAR (n) em vermelho → para sozinho se o saldo acabar
-Saldo menor que a aposta → aviso "Saldo insuficiente. Recarregue a página para recomeçar."
+GIRO AUTOMÁTICO (10/25/50/100) → a tela volta para o tabuleiro → GIRAR vira PARAR (n) em vermelho
+  → para sozinho se o saldo acabar
+Saldo menor que a aposta → GIRAR vira "SEM SALDO" e aparece, logo abaixo do tabuleiro:
+  "Saldo menor que a aposta. Diminua a aposta ou recomece com 1.000,00" (se nem a menor aposta cabe: "O saldo acabou.")
+  → "recomece" recarrega a página
 ```
 
 Durante qualquer animação, os botões ficam desligados e o GIRAR mostra a fase ("Girando...", "Cascata!", "Multiplicador!", "Rodadas grátis").
+
+A barra de espaço gira (ou para o automático) de qualquer lugar. Exceção: quem chegou num botão com Tab aperta aquele botão com espaço, como em qualquer site.
 
 ## Identidade
 
@@ -63,6 +69,7 @@ Cada cor tem **um** significado. Amarelo é "aja aqui", roxo é "bônus", verde 
 - Peças caem com quique (`easeOutBounce`), de coluna em coluna, com um pequeno atraso entre elas.
 - Destaque do ganho ~0,3 s, sumir ~0,2 s, assentar ~0,4 s, banner ~0,3 s para entrar.
 - Hoje um giro sem cascata leva cerca de 1,5 s (peças saem e as novas caem). Não deixar mais lento: cansa no giro automático.
+- **Movimento reduzido** (`prefers-reduced-motion`, opção do sistema): as animações duram metade do tempo, sem quique nem "passar do ponto", e as peças BONUS não giram. As pausas dos banners continuam iguais, para dar tempo de ler. Fica em `tween.ts` (`REDUCED_SPEED`).
 
 ## Números
 
@@ -71,14 +78,24 @@ Cada cor tem **um** significado. Amarelo é "aja aqui", roxo é "bônus", verde 
 
 ## Tamanhos de tela
 
-- O tabuleiro ocupa 100% da largura da coluna (máx. 720 px) e mantém a proporção.
-- **Acima de 520 px:** interface em 2 colunas (saldo | ganho, aposta | GIRAR, automático | bônus).
-- **Até 520 px:** 1 coluna, GIRAR mais alto.
+**Regra principal: o GIRAR aparece sem rolar a página**, no celular e no notebook. O que fica abaixo dele (aposta, automático, bônus, regras) pode pedir rolagem, porque é usado de vez em quando.
+
+- O tabuleiro ocupa a largura da coluna (máx. 720 px) e mantém a proporção. Em tela baixa ele encolhe para caber: largura = (altura da tela − `--reserve`) × proporção do tabuleiro. `--reserve` (em `App.css`) é a altura do resto que precisa caber (margens, título e a linha do GIRAR). Se mudar a altura do título ou da linha do GIRAR, ajuste `--reserve` junto. Mínimo de 260 px de largura (celular deitado rola a página).
+- Título e barra de rodadas grátis dividem o mesmo espaço, com a mesma altura: o tabuleiro não pula quando o bônus começa.
+- **Acima de 640 px:** 3 colunas. Linha 1: saldo | ganho | GIRAR. Linha 2: aposta | automático | comprar bônus.
+- **Até 640 px:** 2 colunas. Saldo | ganho, depois GIRAR na largura toda, depois aposta, automático e bônus, um por linha.
+- Conferido em 390×664 (celular com as barras do navegador), 768×1024 e 1366×680 (notebook).
+
+## Acessibilidade
+
+- Página em `lang="pt-BR"`.
+- Botões − e + da aposta com rótulo ("Diminuir aposta" / "Aumentar aposta"); o valor da aposta é lido quando muda. Botões do automático lidos como "10 giros" etc.
+- Ganho de cada rodada anunciado ao leitor de tela ("Ganho de 12,40").
+- Foco do teclado com anel claro (`#e0e7ff`), visível no fundo escuro.
+- Alvos de toque com pelo menos 40 px.
+- Diálogo da compra de bônus: `<dialog>` nativo (`BonusDialog.tsx`). Abre com o foco em **Cancelar** (Enter não compra sem querer), Esc ou clique fora fecha, a página atrás fica bloqueada.
 
 ## Pontos em aberto (para a próxima revisão de design)
 
-- No celular, o GIRAR fica abaixo do tabuleiro e pode exigir rolagem a cada giro.
-- A confirmação da compra de bônus usa o `confirm()` do navegador, que destoa do visual.
-- As animações não respeitam `prefers-reduced-motion`.
-- O botão "−/+" da aposta não tem rótulo para leitor de tela.
-- A página está marcada como `lang="en"`, mas a interface é em português.
+- Em tela larga e baixa (notebook), uma tela com o tabuleiro à esquerda e os controles numa coluna à direita deixaria o tabuleiro maior. Hoje ele encolhe para o GIRAR caber embaixo.
+- O texto "2 cascatas · x5" ao lado do GANHO é amarelo, cor que neste brief quer dizer "aja aqui". Trocar por verde claro ou pelo lilás dos rótulos deixaria as cores com um significado só.

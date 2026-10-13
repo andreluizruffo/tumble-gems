@@ -13,6 +13,8 @@ import {
 } from './game/config';
 import { Game, type GameState } from './game/Game';
 import { SlotView } from './game/SlotView';
+import { prefersReducedMotion } from './game/tween';
+import { BonusDialog } from './BonusDialog';
 import './App.css';
 
 const STATUS: Record<GameState['phase'], string> = {
@@ -22,6 +24,9 @@ const STATUS: Record<GameState['phase'], string> = {
   paying: 'Multiplicador!',
   bonus: 'Rodadas grátis',
 };
+
+// On a phone, autoplay and the bonus buy sit below the board: bring the board back into view when they start.
+const showBoard = () => window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 
 const money = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -45,6 +50,7 @@ export default function App() {
   const [betIndex, setBetIndex] = useState(2);
   const [autoLeft, setAutoLeft] = useState(0);
   const [ready, setReady] = useState(false);
+  const [confirmingBonus, setConfirmingBonus] = useState(false);
 
   const bet = BET_OPTIONS[betIndex];
   const bonusPrice = bet * BONUS_BUY_PRICE;
@@ -96,87 +102,104 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [ready, autoLeft, state.phase, state.balance, bet]);
 
-  const buyBonus = () => {
-    if (busy || state.balance < bonusPrice) return;
-    if (window.confirm(`Comprar ${FREE_SPINS_AWARD} rodadas grátis por ${money(bonusPrice)}?`)) {
-      gameRef.current?.buyBonus(bet);
-    }
+  const canBuyBonus = !busy && !autoRunning && state.balance >= bonusPrice;
+
+  const confirmBonus = () => {
+    setConfirmingBonus(false);
+    if (!canBuyBonus) return;
+    showBoard();
+    gameRef.current?.buyBonus(bet);
   };
 
   // Space bar spins (or stops autoplay).
+  // Exception: someone who reached a button (or the rules) with Tab expects Space to press it.
+  // After a mouse click or a tap, the focus stays on the clicked button, but Space still spins.
+  const tabbing = useRef(false);
+  useEffect(() => {
+    const onPointer = () => (tabbing.current = false);
+    window.addEventListener('pointerdown', onPointer);
+    return () => window.removeEventListener('pointerdown', onPointer);
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return;
+      if (e.key === 'Tab') tabbing.current = true;
+      if (e.code !== 'Space' || e.repeat || confirmingBonus) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (tabbing.current && target?.closest('button, summary, a, input, select, textarea')) return;
       e.preventDefault();
       if (autoRunning) setAutoLeft(0);
       else spin();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [spin, autoRunning]);
+  }, [spin, autoRunning, confirmingBonus]);
 
   const inFreeSpins = state.freeSpinsTotal > 0;
   const shownWin = state.phase === 'idle' && state.lastRoundWin > 0 ? state.lastRoundWin : state.spinWin;
 
+  const broke = ready && state.phase === 'idle' && state.balance < bet;
+  const canLowerBet = state.balance >= BET_OPTIONS[0];
+  // Read aloud by screen readers when a round ends with a win.
+  const announcement = state.phase === 'idle' && state.lastRoundWin > 0 ? `Ganho de ${money(state.lastRoundWin)}` : '';
+
   return (
     <main className="app">
-      <header className="title">
-        <h1>Tumble Gems</h1>
-        <p>Demo de caça-níquel com cascata · créditos fictícios · RTP simulado 97%</p>
-      </header>
-
-      {inFreeSpins && (
-        <section className="free-spins">
-          <div>
-            <span>Rodadas grátis</span>
-            <strong>
-              {state.freeSpinsTotal - state.freeSpinsLeft}/{state.freeSpinsTotal}
-            </strong>
-          </div>
-          <div>
-            <span>Multiplicador</span>
-            <strong>x{state.freeSpinsMultiplier || 1}</strong>
-          </div>
-          <div>
-            <span>Ganho no bônus</span>
-            <strong>{money(state.freeSpinsWin)}</strong>
-          </div>
-        </section>
-      )}
+      {/* The free spins bar takes the place of the title, so the board does not move when the bonus starts. */}
+      <div className="top">
+        {inFreeSpins ? (
+          <section className="free-spins" aria-label="Rodadas grátis">
+            <div>
+              <span>Rodadas grátis</span>
+              <strong>
+                {state.freeSpinsTotal - state.freeSpinsLeft}/{state.freeSpinsTotal}
+              </strong>
+            </div>
+            <div>
+              <span>Multiplicador</span>
+              <strong>x{state.freeSpinsMultiplier || 1}</strong>
+            </div>
+            <div>
+              <span>Ganho no bônus</span>
+              <strong>{money(state.freeSpinsWin)}</strong>
+            </div>
+          </section>
+        ) : (
+          <header className="title">
+            <h1>Tumble Gems</h1>
+            <p>Demo de caça-níquel com cascata · créditos fictícios · RTP simulado 97%</p>
+          </header>
+        )}
+      </div>
 
       <div className="board" ref={canvasRef} />
 
-      <section className="hud">
-        <div className="stat">
+      {broke && (
+        <p className="broke" role="status">
+          {canLowerBet ? 'Saldo menor que a aposta. Diminua a aposta ou ' : 'O saldo acabou. '}
+          <button type="button" onClick={() => window.location.reload()}>
+            recomece com {money(START_BALANCE)}
+          </button>
+        </p>
+      )}
+
+      <section className="hud" aria-label="Controles do jogo">
+        <div className="stat balance">
           <span>Saldo</span>
           <strong>{money(state.balance)}</strong>
         </div>
 
         <div className="stat win">
-          <span>Ganho</span>
-          <strong>{money(shownWin)}</strong>
-          {state.tumbles > 0 && (
-            <small>
-              {state.tumbles} cascata{state.tumbles > 1 ? 's' : ''}
-              {state.multiplier > 0 && ` · x${state.multiplier}`}
-            </small>
-          )}
-        </div>
-
-        <div className="bet">
-          <span>Aposta</span>
-          <div className="stepper">
-            <button disabled={busy || autoRunning || betIndex === 0} onClick={() => setBetIndex((i) => i - 1)}>
-              −
-            </button>
-            <strong>{money(bet)}</strong>
-            <button
-              disabled={busy || autoRunning || betIndex === BET_OPTIONS.length - 1}
-              onClick={() => setBetIndex((i) => i + 1)}
-            >
-              +
-            </button>
+          <div className="stat-head">
+            <span>Ganho</span>
+            {state.tumbles > 0 && (
+              <small>
+                {state.tumbles} cascata{state.tumbles > 1 ? 's' : ''}
+                {state.multiplier > 0 && ` · x${state.multiplier}`}
+              </small>
+            )}
           </div>
+          <strong>{money(shownWin)}</strong>
         </div>
 
         {autoRunning ? (
@@ -185,30 +208,68 @@ export default function App() {
           </button>
         ) : (
           <button className="spin" onClick={spin} disabled={!canSpin}>
-            {!ready ? 'Carregando...' : busy ? STATUS[state.phase] : 'GIRAR'}
+            {!ready ? 'Carregando...' : busy ? STATUS[state.phase] : broke ? 'SEM SALDO' : 'GIRAR'}
           </button>
         )}
 
-        <div className="auto">
-          <span>Giro automático</span>
+        <div className="bet" role="group" aria-labelledby="bet-label">
+          <span id="bet-label">Aposta</span>
+          <div className="stepper">
+            <button
+              aria-label="Diminuir aposta"
+              disabled={busy || autoRunning || betIndex === 0}
+              onClick={() => setBetIndex((i) => i - 1)}
+            >
+              −
+            </button>
+            <strong aria-live="polite">{money(bet)}</strong>
+            <button
+              aria-label="Aumentar aposta"
+              disabled={busy || autoRunning || betIndex === BET_OPTIONS.length - 1}
+              onClick={() => setBetIndex((i) => i + 1)}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="auto" role="group" aria-labelledby="auto-label">
+          <span id="auto-label">Giro automático</span>
           <div className="auto-options">
             {AUTO_OPTIONS.map((n) => (
-              <button key={n} disabled={!canSpin || autoRunning} onClick={() => setAutoLeft(n)}>
+              <button
+                key={n}
+                aria-label={`${n} giros`}
+                disabled={!canSpin || autoRunning}
+                onClick={() => {
+                  showBoard();
+                  setAutoLeft(n);
+                }}
+              >
                 {n}
               </button>
             ))}
           </div>
         </div>
 
-        <button className="buy" onClick={buyBonus} disabled={busy || autoRunning || state.balance < bonusPrice}>
+        <button className="buy" onClick={() => setConfirmingBonus(true)} disabled={!canBuyBonus}>
           COMPRAR BÔNUS
           <small>{money(bonusPrice)}</small>
         </button>
       </section>
 
-      {state.balance < bet && state.phase === 'idle' && (
-        <p className="broke">Saldo insuficiente. Recarregue a página para recomeçar.</p>
-      )}
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
+
+      <BonusDialog
+        open={confirmingBonus}
+        spins={FREE_SPINS_AWARD}
+        price={money(bonusPrice)}
+        balanceAfter={money(state.balance - bonusPrice)}
+        onConfirm={confirmBonus}
+        onClose={() => setConfirmingBonus(false)}
+      />
 
       <details className="rules">
         <summary>Como funciona</summary>
@@ -233,11 +294,12 @@ export default function App() {
           </li>
         </ul>
         <table>
+          <caption>Quanto paga cada símbolo, em vezes a aposta, pela quantidade de iguais na grade</caption>
           <thead>
             <tr>
               <th>Símbolo</th>
-              <th>8-9</th>
-              <th>10-11</th>
+              <th>8 ou 9</th>
+              <th>10 ou 11</th>
               <th>12+</th>
             </tr>
           </thead>

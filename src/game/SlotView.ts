@@ -3,7 +3,7 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { BOARD_PADDING, CELL, COLS, ORB, ROWS, SCATTER, SYMBOLS } from './config';
 import type { Cell, Grid } from './logic';
-import { easeInCubic, easeOutBack, easeOutBounce, easeOutCubic, tween, wait } from './tween';
+import { easeInCubic, easeOutBack, easeOutBounce, easeOutCubic, prefersReducedMotion, tween, wait } from './tween';
 
 const BOARD_W = COLS * CELL;
 const BOARD_H = ROWS * CELL;
@@ -33,6 +33,8 @@ export class SlotView {
     // The canvas scales with its container (responsive), keeping the aspect ratio.
     app.canvas.style.width = '100%';
     app.canvas.style.height = 'auto';
+    // App.css uses this ratio to shrink the board on short screens, so GIRAR stays visible.
+    parent.style.setProperty('--board-ratio', String((BOARD_W + BOARD_PADDING * 2) / (BOARD_H + BOARD_PADDING * 2)));
     parent.appendChild(app.canvas);
 
     const view = new SlotView(app);
@@ -248,7 +250,9 @@ export class SlotView {
       ...scatters.map((s) => tween(this.ticker, s.scale, { x: 1.4, y: 1.4 }, 350, easeOutBack)),
       ...glows.map((g) => tween(this.ticker, g, { alpha: 1 }, 350, easeOutCubic)),
     ]);
-    for (let i = 0; i < 2; i++) {
+    // the spin is skipped when the user asked for less motion
+    const turns = prefersReducedMotion() ? 0 : 2;
+    for (let i = 0; i < turns; i++) {
       await Promise.all(scatters.map((s) => tween(this.ticker, s, { rotation: s.rotation + Math.PI * 2 }, 600, easeOutCubic)));
     }
     await Promise.all([
