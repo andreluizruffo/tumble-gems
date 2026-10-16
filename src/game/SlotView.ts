@@ -27,7 +27,8 @@ export class SlotView {
       height: BOARD_H + BOARD_PADDING * 2,
       backgroundAlpha: 0,
       antialias: true,
-      resolution: Math.min(window.devicePixelRatio, 2),
+      // Always 2x: dense phone screens need it, and on wide screens App.css scales the board up to 1200px.
+      resolution: 2,
       autoDensity: true,
     });
     // The canvas scales with its container (responsive), keeping the aspect ratio.

@@ -1,6 +1,8 @@
 .app {
   /* Height of everything that must fit on screen besides the board: padding, title and the HUD row with GIRAR.
-     The board shrinks on short screens so GIRAR never needs scrolling (see .board). */
+     The board shrinks on short screens so GIRAR never needs scrolling (see .board).
+     224 = 24 top padding + 78 title + 16 gap + 16 gap + 72 HUD row (saldo | ganho | GIRAR)
+           + 6 GIRAR shadow + 12 spare. Change it together with any of those heights. */
   --reserve: 224px;
   max-width: 720px;
   margin: 0 auto;
@@ -127,8 +129,9 @@
   color: #4ade80;
 }
 
+/* "2 cascatas · x5": light green, because it describes the win (yellow means "act here") */
 .stat small {
-  color: #facc15;
+  color: #86efac;
   font-size: 12px;
   white-space: nowrap;
 }
@@ -400,6 +403,8 @@ summary:focus-visible {
 /* Phones and narrow windows: 2 columns, GIRAR full width right below the numbers */
 @media (max-width: 640px) {
   .app {
+    /* 252 = 12 top padding + 72 title + 12 gap + 12 gap + 66 saldo | ganho + 12 gap
+             + 56 GIRAR + 6 shadow + 4 spare */
     --reserve: 252px;
     padding: 12px 16px 32px;
     gap: 12px;
@@ -441,6 +446,106 @@ summary:focus-visible {
 
   .free-spins strong {
     font-size: 20px;
+  }
+}
+
+/* Wide and short screens (laptops, monitors, tablets lying down): board on the left, controls in a column on the right.
+   Stacking costs height (title + HUD row below the board), so here the board can use the full screen height.
+   - min-width 1000px: below that, the 300px column eats so much width that the board would end up
+     smaller than in the stacked layout (e.g. at 900x700: 544px side by side vs 565px stacked).
+   - min-aspect-ratio 5/4: only screens clearly wider than tall (4:3, 5:4, 16:10, 16:9).
+     Portrait and square-ish screens (phones, tablets standing up) keep the stacked layout. */
+@media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
+  .app {
+    /* Only the top and bottom padding (16 + 16) must fit besides the board: the controls sit beside it. */
+    --reserve: 32px;
+    --side: 300px; /* width of the controls column */
+    --board-max: 1200px; /* the canvas is drawn at 608px x 2 (SlotView): beyond ~1200px it gets blurry */
+    max-width: none;
+    padding: 16px 24px;
+    display: grid;
+    grid-template-columns: auto var(--side);
+    /* The last row is 1fr: the tall board fills it, so the rows of the column keep their own height. */
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas:
+      'board top'
+      'board hud'
+      'board broke'
+      'board rules';
+    justify-content: center;
+    align-items: start;
+    gap: 12px 24px;
+    /* Lets the board use 100cqw = width of this box, without the scrollbar (100vw would include it). */
+    container-type: inline-size;
+  }
+
+  .top {
+    grid-area: top;
+    /* Fixed, and both the title and the free spins bar fit inside: GIRAR does not move when the bonus starts. */
+    height: 96px;
+    min-height: 0;
+  }
+
+  .title h1 {
+    font-size: 36px;
+  }
+
+  .title p {
+    font-size: 13px;
+  }
+
+  .board {
+    grid-area: board;
+    /* Smallest of: the cap, the free height (as in the stacked layout) and the width left by the column */
+    width: max(
+      260px,
+      min(var(--board-max), calc((100vh - var(--reserve)) * var(--board-ratio)), calc(100cqw - var(--side) - 24px))
+    );
+    width: max(
+      260px,
+      min(var(--board-max), calc((100dvh - var(--reserve)) * var(--board-ratio)), calc(100cqw - var(--side) - 24px))
+    );
+  }
+
+  .broke {
+    grid-area: broke;
+  }
+
+  .hud {
+    grid-area: hud;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'balance' 'win' 'spin' 'bet' 'autoplay' 'buy';
+  }
+
+  .spin {
+    min-height: 64px;
+  }
+
+  .rules {
+    grid-area: rules;
+  }
+
+  /* Free spins bar: one row per number (label on the left, value on the right), to fit the narrow column */
+  .free-spins {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: 0;
+    height: 100%;
+    padding: 8px 14px;
+    text-align: left;
+  }
+
+  .free-spins div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .free-spins strong {
+    font-size: 20px;
+    line-height: 1.2; /* 3 rows x 24px + 16px padding = 88px, inside the 96px slot */
   }
 }
 

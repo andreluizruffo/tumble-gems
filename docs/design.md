@@ -24,7 +24,7 @@ GIRAR (ou barra de espaço)
 
 COMPRAR BÔNUS → diálogo "Comprar bônus?" (preço e saldo que sobra; Cancelar / Comprar) → rodadas grátis direto
   → a tela volta para o tabuleiro (no celular o botão fica abaixo dele)
-  → barra roxa no lugar do título: rodada atual/total, multiplicador acumulado, ganho no bônus
+  → barra roxa no lugar do título (no notebook, no topo da coluna da direita): rodada atual/total, multiplicador acumulado, ganho no bônus
   → 3+ BONUS durante o bônus: "+5 RODADAS"
   → fim: banner "TOTAL" com o ganho → volta para GIRAR
 
@@ -53,9 +53,10 @@ A barra de espaço gira (ou para o automático) de qualquer lugar. Exceção: qu
 | Ação principal | amarelo → laranja (`#fde047` → `#f59e0b`), texto `#451a03` | GIRAR e o título |
 | Bônus | rosa → roxo (`#e879f9` → `#a21caf`) | COMPRAR BÔNUS, barra de rodadas grátis, peça BONUS |
 | Ganho | verde `#4ade80` | valor do ganho, BIG WIN |
+| Detalhe do ganho | verde claro `#86efac` (11,4:1 no painel) | "2 cascatas · x5" ao lado do GANHO |
 | Parar / alerta | vermelho (`#fca5a5` → `#ef4444`) | PARAR do giro automático, saldo insuficiente |
 
-Cada cor tem **um** significado. Amarelo é "aja aqui", roxo é "bônus", verde é "ganhou", vermelho é "pare".
+Cada cor tem **um** significado. Amarelo é "aja aqui", roxo é "bônus", verde é "ganhou", vermelho é "pare". Cascatas e multiplicador só aparecem quando há ganho, por isso o texto delas é verde (mais claro e menor que o valor).
 
 - **Fonte:** a do sistema (`system-ui`, `Segoe UI`) na interface. Arial em negrito no canvas (banners e números das peças).
 - **Botões grandes:** cantos de 14 px e sombra embaixo, como tecla. Ao clicar, o GIRAR afunda 3 px.
@@ -80,11 +81,26 @@ Cada cor tem **um** significado. Amarelo é "aja aqui", roxo é "bônus", verde 
 
 **Regra principal: o GIRAR aparece sem rolar a página**, no celular e no notebook. O que fica abaixo dele (aposta, automático, bônus, regras) pode pedir rolagem, porque é usado de vez em quando.
 
-- O tabuleiro ocupa a largura da coluna (máx. 720 px) e mantém a proporção. Em tela baixa ele encolhe para caber: largura = (altura da tela − `--reserve`) × proporção do tabuleiro. `--reserve` (em `App.css`) é a altura do resto que precisa caber (margens, título e a linha do GIRAR). Se mudar a altura do título ou da linha do GIRAR, ajuste `--reserve` junto. Mínimo de 260 px de largura (celular deitado rola a página).
-- Título e barra de rodadas grátis dividem o mesmo espaço, com a mesma altura: o tabuleiro não pula quando o bônus começa.
-- **Acima de 640 px:** 3 colunas. Linha 1: saldo | ganho | GIRAR. Linha 2: aposta | automático | comprar bônus.
-- **Até 640 px:** 2 colunas. Saldo | ganho, depois GIRAR na largura toda, depois aposta, automático e bônus, um por linha.
-- Conferido em 390×664 (celular com as barras do navegador), 768×1024 e 1366×680 (notebook).
+Três arranjos, escolhidos pelo tamanho da tela (media queries em `App.css`):
+
+- **Lado a lado — tela com 1000 px ou mais de largura e proporção de 5:4 ou mais larga** (notebook, monitor, tablet deitado): tabuleiro à esquerda; à direita, uma coluna de 300 px com título (ou barra das rodadas grátis), saldo, ganho, GIRAR, aposta, automático, comprar bônus e "Como funciona".
+  - O tabuleiro usa a altura toda da tela menos as margens (`--reserve: 32px`), limitado pela largura que sobra ao lado da coluna e a 1200 px (o canvas é desenhado em 2x, 1216 px; passa disso fica borrado).
+  - Por que 1000 px: abaixo disso a coluna de 300 px come tanta largura que o tabuleiro ficaria menor que empilhado (em 900×700: 544 px lado a lado contra 565 px empilhado). Por que 5:4: só telas claramente mais largas que altas; tablet em pé e telas quase quadradas continuam empilhadas.
+  - Título e barra das rodadas grátis dividem um espaço fixo de 96 px no topo da coluna; a barra vira 3 linhas (rótulo à esquerda, número à direita). Nada se move quando o bônus começa.
+- **Empilhado, acima de 640 px:** título, tabuleiro e controles em 3 colunas. Linha 1: saldo | ganho | GIRAR. Linha 2: aposta | automático | comprar bônus.
+- **Empilhado, até 640 px:** 2 colunas. Saldo | ganho, depois GIRAR na largura toda, depois aposta, automático e bônus, um por linha.
+
+No empilhado, o tabuleiro ocupa a largura da coluna (máx. 720 px) e mantém a proporção. Em tela baixa ele encolhe para caber: largura = (altura da tela − `--reserve`) × proporção do tabuleiro. `--reserve` é a altura do resto que precisa caber (margens, título e a linha do GIRAR); a conta de cada número está comentada em `App.css`. Se mudar a altura do título ou da linha do GIRAR, ajuste `--reserve` junto. Mínimo de 260 px de largura (celular deitado rola a página). Título e barra de rodadas grátis têm a mesma altura: o tabuleiro não pula quando o bônus começa.
+
+| Tela | Arranjo | Largura do tabuleiro | Base do GIRAR |
+| --- | --- | --- | --- |
+| 1920×1080 | lado a lado | 1200 px | 352 px |
+| 1440×900 | lado a lado | 1031 px | 352 px |
+| 1280×800 | lado a lado | 908 px | 352 px |
+| 1366×680 (notebook com barras do navegador) | lado a lado | 770 px | 352 px |
+| 1024×768 | lado a lado | 652 px | 352 px |
+| 768×1024 (tablet em pé) | empilhado | 688 px | 785 px |
+| 390×664 (celular com barras do navegador) | empilhado | 358 px | 543 px |
 
 ## Acessibilidade
 
@@ -97,5 +113,4 @@ Cada cor tem **um** significado. Amarelo é "aja aqui", roxo é "bônus", verde 
 
 ## Pontos em aberto (para a próxima revisão de design)
 
-- Em tela larga e baixa (notebook), uma tela com o tabuleiro à esquerda e os controles numa coluna à direita deixaria o tabuleiro maior. Hoje ele encolhe para o GIRAR caber embaixo.
-- O texto "2 cascatas · x5" ao lado do GANHO é amarelo, cor que neste brief quer dizer "aja aqui". Trocar por verde claro ou pelo lilás dos rótulos deixaria as cores com um significado só.
+- Celular deitado (ex.: 844×390) continua empilhado e o GIRAR pede rolagem. Dá para levar o lado a lado para ele, mas a coluna da direita teria de começar pelo GIRAR, porque a altura não cabe título + saldo + ganho antes dele.
